@@ -50,15 +50,12 @@ class Query(object):
       Exception if expansion of any variables failed.
       """
     self._sql = sql
-    self._data_sources = data_sources
     self._udfs = udfs
     self._subqueries = subqueries
     self._env = env
     self._query_params = query_params
 
-    if data_sources is None:
-      data_sources = {}
-
+    self._data_sources = []
     self._code = None
     self._imports = []
     if self._env is None:
@@ -70,21 +67,17 @@ class Query(object):
       if not self._env.__contains__(obj):
         raise Exception('Cannot find object %s.' % obj)
 
-    # Validate subqueries and UDFs when adding them to query
+    # Validate subqueries, UDFs, and datasources when adding them to query
     if self._subqueries:
       for subquery in self._subqueries:
         _validate_object(subquery)
     if self._udfs:
       for udf in self._udfs:
         _validate_object(udf)
-
-    self._external_tables = None
-    if len(data_sources):
-      self._external_tables = {}
-      for name, table in list(data_sources.items()):
-        if table.schema is None:
-          raise Exception('Referenced external table %s has no known schema' % name)
-        self._external_tables[name] = table._to_query_json()
+    if data_sources:
+      for ds in data_sources:
+        _validate_object(ds)
+        self._data_sources.append(self._env[ds])
 
   def _expanded_sql(self, sampling=None):
     """Get the expanded SQL of this object, including all subqueries, UDFs, and external datasources
@@ -175,7 +168,7 @@ class Query(object):
     api = _api.Api(context)
     try:
       query_result = api.jobs_insert_query(self.sql, self._code, self._imports, dry_run=True,
-                                                 table_definitions=self._external_tables)
+                                                 table_definitions=self._data_sources)
     except Exception as e:
       raise e
     return query_result['statistics']['query']
@@ -221,7 +214,7 @@ class Query(object):
                                                  use_cache=output_options.use_cache,
                                                  batch=batch,
                                                  allow_large_results=output_options.allow_large_results,
-                                                 table_definitions=self._external_tables)
+                                                 table_definitions=self._data_sources)
     except Exception as e:
       raise e
     if 'jobReference' not in query_result:
