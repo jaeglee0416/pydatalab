@@ -18,6 +18,7 @@ standard_library.install_aliases()  # noqa
 from builtins import str
 from past.builtins import basestring
 from builtins import object
+from retry.api import retry_call
 
 import copy
 import datetime
@@ -40,7 +41,7 @@ class RequestException(Exception):
   def __init__(self, status, content):
     self.status = status
     self.content = content
-    self.message = 'HTTP request failed'
+    self.message = 'HTTP request failed (status %s)' % self.status
     # Try extract a message from the body; swallow possible resulting ValueErrors and KeyErrors.
     try:
       error = json.loads(content)['error']
@@ -139,10 +140,22 @@ class Http(object):
     response = None
     try:
       log.debug('request: method[%(method)s], url[%(url)s], body[%(data)s]' % locals())
-      response, content = http.request(url,
-                                       method=method,
-                                       body=data,
-                                       headers=headers)
+      # TODO(db): Retry only on retryable exceptions, whatever those are, e.g.
+      # - Status 5xx (easy, sensible)
+      # - Match response content (ugh), e.g.
+      #   - "^Error encountered during execution. Retrying may solve the problem.$"
+      #   - https://gist.github.com/jdanbrown/f611dfefb606c35cc934155df3e94c94
+      response, content = retry_call(
+        delay=1,
+        backoff=1,
+        tries=3,
+        f=lambda: http.request(
+          url,
+          method=method,
+          body=data,
+          headers=headers,
+        ),
+      )
       content = content.decode()
       if 200 <= response.status < 300:
         if raw_response:
