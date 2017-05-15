@@ -385,7 +385,9 @@ class Table(object):
     """ Helper function to create a Job instance from a response. """
     job = None
     if response and 'jobReference' in response:
-      job = _job.Job(job_id=response['jobReference']['jobId'], context=self._context)
+      context = datalab.context.Context(project_id=response['jobReference']['projectId'],
+                                        credentials=self._context.credentials)
+      job = _job.Job(job_id=response['jobReference']['jobId'], context=context)
     return job
 
   def extract_async(self, destination, format='csv', csv_delimiter=None, csv_header=True,
