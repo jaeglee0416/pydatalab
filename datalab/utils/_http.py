@@ -139,7 +139,8 @@ class Http(object):
 
     response = None
     try:
-      log.debug('request: method[%(method)s], url[%(url)s], body[%(data)s]' % locals())
+      data_4k = data if data is None or len(data) <= 4*1024 else '%s ... [truncated]' % data[:4*1024]
+      log.debug('request: method[%(method)s], url[%(url)s], body[%(data_4k)s]' % locals())
       # TODO(db): Retry only on retryable exceptions, whatever those are, e.g.
       # - Status 5xx (easy, sensible)
       # - Match response content (ugh), e.g.
