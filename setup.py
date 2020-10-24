@@ -98,7 +98,7 @@ for accessing Google's Cloud Platform services such as Google BigQuery.
     'scikit-learn==0.17.1',
     'ipykernel==4.5.2',
     'psutil==4.3.0',
-    'jsonschema==2.6.0',
+    'jsonschema>=2.6.0',
   ],
   package_data={
     'google.datalab.notebook': [
